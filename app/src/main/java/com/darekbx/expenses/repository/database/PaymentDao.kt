@@ -12,6 +12,12 @@ interface PaymentDao {
     @Query("SELECT * FROM payment")
     fun getAll(): List<PaymentDto>
 
+    @Query("SELECT * FROM payment ORDER BY timestamp DESC LIMIT 1")
+    fun getLastPayment(): LiveData<PaymentDto>
+
+    @Query("SELECT * FROM payment ORDER BY timestamp DESC LIMIT 1")
+    fun getLastPaymentAsync(): PaymentDto
+
     @Insert
     fun insert(paymentDto: PaymentDto): Long
 }

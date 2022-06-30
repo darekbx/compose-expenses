@@ -9,11 +9,8 @@ import com.darekbx.expenses.repository.database.dtos.ExpenseDto
 @Dao
 interface ExpenseDao {
 
-    @Query("UPDATE expense SET payment_id = :paymentUid WHERE payment_id is NULL")
-    fun updateExpenses(paymentUid: Long)
-
-    @Query("SELECT * FROM expense where payment_id is NULL")
-    fun getActiveExpenses(): LiveData<List<ExpenseDto>>
+    @Query("SELECT * FROM expense where payment_id = :paymentId")
+    fun getActiveExpenses(paymentId: Int): LiveData<List<ExpenseDto>>
 
     @Query("SELECT * FROM expense where payment_id = :paymentUid")
     fun getExpensesForPayment(paymentUid: Int): List<ExpenseDto>

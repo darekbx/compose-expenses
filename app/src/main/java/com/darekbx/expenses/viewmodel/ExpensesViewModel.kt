@@ -103,17 +103,23 @@ class ExpensesViewModel @Inject constructor(
     }
 
     fun listActiveExpenses(): LiveData<List<Expense>> =
-        Transformations.map(expenseDao.getActiveExpenses()) { dtos ->
-            dtos.map { it.toDomain() }
+        Transformations.switchMap(paymentDao.getLastPayment()) { paymentDto ->
+            if (paymentDto == null) {
+                return@switchMap MutableLiveData<List<Expense>>()
+            }
+            Transformations.map(expenseDao.getActiveExpenses(paymentDto.uid!!)) {
+                it.map { dto -> dto.toDomain() }
+            }
         }
 
     private fun add(expense: Expense) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
+                val lastPayment = paymentDao.getLastPaymentAsync()
                 with(expense) {
                     val dto = ExpenseDto(
                         null,
-                        null,
+                        lastPayment.uid,
                         amount,
                         description,
                         System.currentTimeMillis(),
@@ -133,8 +139,7 @@ class ExpensesViewModel @Inject constructor(
                     amount,
                     System.currentTimeMillis()
                 )
-                val paymentUid = paymentDao.insert(dto)
-                expenseDao.updateExpenses(paymentUid)
+                paymentDao.insert(dto)
             }
         }
     }
