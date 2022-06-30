@@ -3,6 +3,7 @@ import android.content.Context
 import androidx.room.Room
 import com.darekbx.expenses.repository.database.AppDatabase
 import com.darekbx.expenses.repository.database.ExpenseDao
+import com.darekbx.expenses.repository.database.PaymentDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,6 +17,11 @@ class ExpensesModule {
     @Provides
     fun provideExpensesDao(appDatabase: AppDatabase): ExpenseDao {
         return appDatabase.expensedao()
+    }
+
+    @Provides
+    fun providePaymentDao(appDatabase: AppDatabase): PaymentDao {
+        return appDatabase.paymentdao()
     }
 
     @Provides

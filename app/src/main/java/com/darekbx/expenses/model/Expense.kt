@@ -1,7 +1,7 @@
 package com.darekbx.expenses.model
 
 import androidx.compose.ui.graphics.Color
-import com.darekbx.expenses.repository.database.ExpenseDto
+import com.darekbx.expenses.repository.database.dtos.ExpenseDto
 import java.text.SimpleDateFormat
 
 data class Expense(

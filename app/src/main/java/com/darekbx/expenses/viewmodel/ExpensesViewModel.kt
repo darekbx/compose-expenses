@@ -2,14 +2,15 @@ package com.darekbx.expenses.viewmodel
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.Transformations
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.*
 import com.darekbx.expenses.model.Expense
 import com.darekbx.expenses.model.Expense.Companion.toDomain
+import com.darekbx.expenses.model.Payment
+import com.darekbx.expenses.model.Payment.Companion.toDomain
 import com.darekbx.expenses.repository.database.ExpenseDao
-import com.darekbx.expenses.repository.database.ExpenseDto
+import com.darekbx.expenses.repository.database.dtos.ExpenseDto
+import com.darekbx.expenses.repository.database.PaymentDao
+import com.darekbx.expenses.repository.database.dtos.PaymentDto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -17,20 +18,27 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class UIState(
-    val addDialogVisible: Boolean = false
+    val addDialogVisible: Boolean = false,
+    val paymentConfirmDialogVisible: Boolean = false
 )
 
 @HiltViewModel
 class ExpensesViewModel @Inject constructor(
     private val expenseDao: ExpenseDao,
+    private val paymentDao: PaymentDao,
 ): ViewModel() {
 
     private val _state = mutableStateOf(UIState())
     val state: State<UIState> = _state
 
     sealed class UIEvent {
-        class AddButtonClick : UIEvent()
-        class CloseAddDialog : UIEvent()
+
+        object AddButtonClick : UIEvent()
+        object MakePaymentButtonClick : UIEvent()
+        object CloseAddDialog : UIEvent()
+        object CloseConfirmPaymentDialog : UIEvent()
+
+        class CloseConfirmPaymentDialogAndSave(val amount: String) : UIEvent()
         class CloseDialogAndSave(
             val amount: String,
             val description: String,
@@ -44,10 +52,24 @@ class ExpensesViewModel @Inject constructor(
                 _state.value = state.value.copy(
                     addDialogVisible = true
                 )
+            is UIEvent.MakePaymentButtonClick ->
+                _state.value = state.value.copy(
+                    paymentConfirmDialogVisible = true
+                )
             is UIEvent.CloseAddDialog ->
                 _state.value = state.value.copy(
                     addDialogVisible = false
                 )
+            is UIEvent.CloseConfirmPaymentDialog ->
+                _state.value = state.value.copy(
+                    paymentConfirmDialogVisible = false
+                )
+            is UIEvent.CloseConfirmPaymentDialogAndSave -> {
+                makePayment(event.amount.toDouble())
+                _state.value = state.value.copy(
+                    paymentConfirmDialogVisible = false
+                )
+            }
             is UIEvent.CloseDialogAndSave -> {
                 add(
                     Expense(
@@ -62,27 +84,57 @@ class ExpensesViewModel @Inject constructor(
                     addDialogVisible = false
                 )
             }
-
         }
     }
 
-    fun listAll(): LiveData<List<Expense>> = Transformations.map(expenseDao.getAll()) { dtos ->
-        dtos.map { it.toDomain() }
+    fun loadAllPayments(): LiveData<List<Payment>> = liveData {
+        withContext(Dispatchers.IO) {
+            val payments = paymentDao
+                .getAll()
+                .map { paymentDto ->
+                    val expenses = expenseDao.getExpensesForPayment(paymentDto.uid!!)
+                    paymentDto.toDomain()
+                        .also {
+                            it.expenses = expenses.map { dto -> dto.toDomain() }
+                        }
+                }
+            emit(payments)
+        }
     }
 
-    fun add(expense: Expense) {
+    fun listActiveExpenses(): LiveData<List<Expense>> =
+        Transformations.map(expenseDao.getActiveExpenses()) { dtos ->
+            dtos.map { it.toDomain() }
+        }
+
+    private fun add(expense: Expense) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 with(expense) {
                     val dto = ExpenseDto(
+                        null,
                         null,
                         amount,
                         description,
                         System.currentTimeMillis(),
                         type.value
                     )
-                    expenseDao.insertAll(dto)
+                    expenseDao.insert(dto)
                 }
+            }
+        }
+    }
+
+    private fun makePayment(amount: Double) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val dto = PaymentDto(
+                    null,
+                    amount,
+                    System.currentTimeMillis()
+                )
+                val paymentUid = paymentDao.insert(dto)
+                expenseDao.updateExpenses(paymentUid)
             }
         }
     }

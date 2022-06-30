@@ -1,19 +1,27 @@
+/**
+ * TODO:
+ *  - Display statistics for every "payment" entry
+ */
 package com.darekbx.expenses
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material.FloatingActionButton
-import androidx.compose.material.Icon
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Scaffold
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.darekbx.expenses.ui.AddDialog
-import com.darekbx.expenses.ui.ExpensesList
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.darekbx.expenses.navigation.BottomAppBar
+import com.darekbx.expenses.navigation.NavigationItem
+import com.darekbx.expenses.ui.*
 import com.darekbx.expenses.ui.theme.ExpensesTheme
 import com.darekbx.expenses.viewmodel.ExpensesViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -25,30 +33,42 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             ExpensesTheme {
-                MainScreen()
+                val navController = rememberNavController()
+                Scaffold(
+                    backgroundColor = Color.White,
+                    bottomBar = { BottomAppBar(navController) }
+                ) { innerPadding ->
+                    Box(modifier = Modifier.padding(innerPadding)) {
+                        Navigation(navController)
+                    }
+                }
             }
         }
     }
 
     @Composable
-    private fun MainScreen(
-        expensesViewModel: ExpensesViewModel = hiltViewModel()
-    ) {
-        Scaffold(
-            backgroundColor = Color.White,
-            floatingActionButton = {
-                FloatingActionButton(onClick = {
-                    expensesViewModel.onEvent(ExpensesViewModel.UIEvent.AddButtonClick())
-                }) {
-                    Icon(Icons.Filled.Add, "add")
-                }
-            }
-        ) {
-            ExpensesList()
+    private fun MainScreen(expensesViewModel: ExpensesViewModel = hiltViewModel()) {
+        ExpensesList()
+        val state by expensesViewModel.state
+        if (state.addDialogVisible) {
+            AddDialog()
+        }
+        if (state.paymentConfirmDialogVisible) {
+            PaymentConfirmDialog()
+        }
+    }
 
-            val state by expensesViewModel.state
-            if (state.addDialogVisible) {
-                AddDialog()
+    @Composable
+    fun Navigation(navController: NavHostController) {
+        NavHost(navController, startDestination = NavigationItem.Home.route) {
+            composable(NavigationItem.Home.route) {
+                MainScreen()
+            }
+            composable(NavigationItem.Payments.route) {
+                PaymentsScreen()
+            }
+            composable(NavigationItem.Statistics.route) {
+                StatisticsScreen()
             }
         }
     }

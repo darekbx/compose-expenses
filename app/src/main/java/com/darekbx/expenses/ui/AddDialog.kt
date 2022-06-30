@@ -24,7 +24,7 @@ fun AddDialog(
 
     AlertDialog(
         onDismissRequest = {
-            expensesViewModel.onEvent(ExpensesViewModel.UIEvent.CloseAddDialog())
+            expensesViewModel.onEvent(ExpensesViewModel.UIEvent.CloseAddDialog)
         },
         title = {
             Text(
@@ -51,7 +51,7 @@ fun AddDialog(
         dismissButton = {
             Button(
                 onClick = {
-                    expensesViewModel.onEvent(ExpensesViewModel.UIEvent.CloseAddDialog())
+                    expensesViewModel.onEvent(ExpensesViewModel.UIEvent.CloseAddDialog)
                 }) {
                 Text("Cancel")
             }
