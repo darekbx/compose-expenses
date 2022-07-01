@@ -7,6 +7,7 @@ import com.darekbx.expenses.model.Expense
 import com.darekbx.expenses.model.Expense.Companion.toDomain
 import com.darekbx.expenses.model.Payment
 import com.darekbx.expenses.model.Payment.Companion.toDomain
+import com.darekbx.expenses.model.StatisticValue
 import com.darekbx.expenses.repository.database.ExpenseDao
 import com.darekbx.expenses.repository.database.dtos.ExpenseDto
 import com.darekbx.expenses.repository.database.PaymentDao
@@ -16,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import kotlin.math.exp
 
 data class UIState(
     val addDialogVisible: Boolean = false,
@@ -83,6 +85,27 @@ class ExpensesViewModel @Inject constructor(
                 _state.value = state.value.copy(
                     addDialogVisible = false
                 )
+            }
+        }
+    }
+
+    fun loadStatistics(): LiveData<List<StatisticValue>> = liveData {
+        withContext(Dispatchers.IO) {
+            paymentDao.getLastPaymentAsync().let { payment ->
+                val expenses = expenseDao.getExpensesForPayment(payment.uid!!)
+                val overallSum = expenses.sumOf { it.amount }
+                val values = expenses
+                    .groupBy { it.type }
+                    .mapValues {
+                        it.value.sumOf { expense -> expense.amount } / overallSum * 100
+                    }
+                    .map { pair ->
+                        StatisticValue(
+                            pair.value,
+                            Expense.Type.values().first { it.value == pair.key }
+                        )
+                    }
+                emit(values)
             }
         }
     }
