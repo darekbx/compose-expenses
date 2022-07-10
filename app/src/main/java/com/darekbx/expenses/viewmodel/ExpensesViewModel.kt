@@ -7,6 +7,7 @@ import com.darekbx.expenses.model.Expense
 import com.darekbx.expenses.model.Expense.Companion.toDomain
 import com.darekbx.expenses.model.Payment
 import com.darekbx.expenses.model.Payment.Companion.toDomain
+import com.darekbx.expenses.model.StatisticSum
 import com.darekbx.expenses.model.StatisticValue
 import com.darekbx.expenses.repository.database.ExpenseDao
 import com.darekbx.expenses.repository.database.dtos.ExpenseDto
@@ -17,7 +18,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import kotlin.math.exp
 
 data class UIState(
     val addDialogVisible: Boolean = false,
@@ -105,6 +105,7 @@ class ExpensesViewModel @Inject constructor(
                             Expense.Type.values().first { it.value == pair.key }
                         )
                     }
+                    .sortedByDescending { it.percent }
                 emit(values)
             }
         }
@@ -125,13 +126,21 @@ class ExpensesViewModel @Inject constructor(
         }
     }
 
-    fun listActiveExpenses(): LiveData<List<Expense>> =
+    fun listActiveExpenses(): LiveData<List<StatisticSum>> =
         Transformations.switchMap(paymentDao.getLastPayment()) { paymentDto ->
             if (paymentDto == null) {
-                return@switchMap MutableLiveData<List<Expense>>()
+                return@switchMap MutableLiveData<List<StatisticSum>>()
             }
             Transformations.map(expenseDao.getActiveExpenses(paymentDto.uid!!)) {
-                it.map { dto -> dto.toDomain() }
+                it
+                    .map { dto -> dto.toDomain() }
+                    .groupBy { expense -> expense.type }
+                    .map { entry ->
+                        val sum = entry.value.sumOf { expense -> expense.amount }
+                        val count = entry.value.size
+                        StatisticSum(sum, count, entry.key)
+                    }
+                    .sortedByDescending { statisticSum -> statisticSum.sum }
             }
         }
 

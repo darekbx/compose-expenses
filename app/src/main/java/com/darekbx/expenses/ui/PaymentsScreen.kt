@@ -37,12 +37,12 @@ fun PaymentsScreen(
                     Column {
                         Text(
                             modifier = Modifier.padding(start = 8.dp),
-                            text = "Payment: ${payment.amount}zł",
+                            text = "Payment: %.2fzł".format(payment.amount),
                             style = MaterialTheme.typography.h6
                         )
                         Text(
                             modifier = Modifier.padding(start = 8.dp),
-                            text = "Spent: ${payment.summaryExpenses()}zł",
+                            text = "Spent: %.2fzł".format(payment.summaryExpenses()),
                             style = MaterialTheme.typography.subtitle1
                         )
                     }
