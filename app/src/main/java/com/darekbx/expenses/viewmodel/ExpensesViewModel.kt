@@ -15,13 +15,17 @@ import com.darekbx.expenses.repository.database.PaymentDao
 import com.darekbx.expenses.repository.database.dtos.PaymentDto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class UIState(
     val addDialogVisible: Boolean = false,
-    val paymentConfirmDialogVisible: Boolean = false
+    val paymentConfirmDialogVisible: Boolean = false,
+    val actualExpesnesDialogVisible: Boolean = false,
+    val statisticsLoaded: Boolean = false,
+    val expensesType: Expense.Type = Expense.Type.OTHERS
 )
 
 @HiltViewModel
@@ -39,7 +43,10 @@ class ExpensesViewModel @Inject constructor(
         object MakePaymentButtonClick : UIEvent()
         object CloseAddDialog : UIEvent()
         object CloseConfirmPaymentDialog : UIEvent()
+        object CloseActualExpensesDialog : UIEvent()
+        object StatisticsLoaded : UIEvent()
 
+        class OpenActualExpensesDialog(val expensesType: Expense.Type) : UIEvent()
         class CloseConfirmPaymentDialogAndSave(val amount: String) : UIEvent()
         class CloseDialogAndSave(
             val amount: String,
@@ -65,6 +72,20 @@ class ExpensesViewModel @Inject constructor(
             is UIEvent.CloseConfirmPaymentDialog ->
                 _state.value = state.value.copy(
                     paymentConfirmDialogVisible = false
+                )
+            is UIEvent.StatisticsLoaded ->
+                _state.value = state.value.copy(
+                    statisticsLoaded = true
+                )
+            is UIEvent.OpenActualExpensesDialog -> {
+                _state.value = state.value.copy(
+                    actualExpesnesDialogVisible = true,
+                    expensesType = event.expensesType
+                )
+            }
+            is UIEvent.CloseActualExpensesDialog ->
+                _state.value = state.value.copy(
+                    actualExpesnesDialogVisible = false
                 )
             is UIEvent.CloseConfirmPaymentDialogAndSave -> {
                 makePayment(event.amount.toDouble())
@@ -107,6 +128,9 @@ class ExpensesViewModel @Inject constructor(
                     }
                     .sortedByDescending { it.percent }
                 emit(values)
+
+                delay(50L)
+                onEvent(UIEvent.StatisticsLoaded)
             }
         }
     }
@@ -141,6 +165,16 @@ class ExpensesViewModel @Inject constructor(
                         StatisticSum(sum, count, entry.key)
                     }
                     .sortedByDescending { statisticSum -> statisticSum.sum }
+            }
+        }
+
+    fun listActiveExpenses(type: Expense.Type): LiveData<List<Expense>> =
+        Transformations.switchMap(paymentDao.getLastPayment()) { paymentDto ->
+            if (paymentDto == null) {
+                return@switchMap MutableLiveData<List<Expense>>()
+            }
+            Transformations.map(expenseDao.getActiveExpenses(paymentDto.uid!!, type.value)) {
+                it.map { dto -> dto.toDomain() }
             }
         }
 

@@ -56,6 +56,9 @@ class MainActivity : ComponentActivity() {
         if (state.paymentConfirmDialogVisible) {
             PaymentConfirmDialog()
         }
+        if (state.actualExpesnesDialogVisible) {
+            ActualExpensesDialog(expensesType = state.expensesType)
+        }
     }
 
     @Composable

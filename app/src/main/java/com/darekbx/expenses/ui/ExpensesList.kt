@@ -1,5 +1,6 @@
 package com.darekbx.expenses.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,7 +28,10 @@ fun ExpensesList(
     Box(Modifier.fillMaxSize()) {
         val statisticSums by expensesViewModel.listActiveExpenses().observeAsState()
         statisticSums?.let {
-            ExpensesList(Modifier.padding(8.dp), it)
+            ExpensesList(Modifier.padding(8.dp), it) {
+                // onItemClick
+                expensesViewModel.onEvent(ExpensesViewModel.UIEvent.OpenActualExpensesDialog(it))
+            }
         }
 
         Column(
@@ -66,11 +70,14 @@ fun ExpensesList(
 @Composable
 fun ExpensesList(
     modifier: Modifier = Modifier,
-    statisticSums: List<StatisticSum>
+    statisticSums: List<StatisticSum>,
+    onItemClick: (Expense.Type) -> (Unit) = { }
 ) {
     LazyColumn(modifier) {
         items(statisticSums) { statisticSum ->
-            ExpenseSumItem(statisticSum = statisticSum)
+            ExpenseSumItem(statisticSum = statisticSum) {
+                onItemClick(it)
+            }
         }
     }
 }
@@ -78,10 +85,11 @@ fun ExpensesList(
 @Composable
 fun ExpenseSumItem(
     modifier: Modifier = Modifier,
-    statisticSum: StatisticSum
+    statisticSum: StatisticSum,
+    onItemClick: (Expense.Type) -> (Unit)
 ) {
     Card(
-        modifier.padding(8.dp),
+        modifier.padding(8.dp).clickable { onItemClick(statisticSum.type) },
         elevation = 4.dp,
         backgroundColor = statisticSum.type.color
     ) {

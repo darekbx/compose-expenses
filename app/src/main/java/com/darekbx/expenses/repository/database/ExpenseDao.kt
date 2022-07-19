@@ -9,10 +9,13 @@ import com.darekbx.expenses.repository.database.dtos.ExpenseDto
 @Dao
 interface ExpenseDao {
 
-    @Query("SELECT * FROM expense where payment_id = :paymentId")
+    @Query("SELECT * FROM expense WHERE payment_id = :paymentId AND type = :type ORDER BY amount DESC")
+    fun getActiveExpenses(paymentId: Int, type: Int): LiveData<List<ExpenseDto>>
+
+    @Query("SELECT * FROM expense WHERE payment_id = :paymentId")
     fun getActiveExpenses(paymentId: Int): LiveData<List<ExpenseDto>>
 
-    @Query("SELECT * FROM expense where payment_id = :paymentUid")
+    @Query("SELECT * FROM expense WHERE payment_id = :paymentUid")
     fun getExpensesForPayment(paymentUid: Int): List<ExpenseDto>
 
     @Insert
