@@ -18,6 +18,9 @@ interface PaymentDao {
     @Query("SELECT * FROM payment ORDER BY timestamp DESC LIMIT 1")
     fun getLastPaymentAsync(): PaymentDto
 
+    @Query("SELECT COUNT(uid) FROM payment")
+    fun countPayments(): Int
+
     @Insert
     fun insert(paymentDto: PaymentDto): Long
 }

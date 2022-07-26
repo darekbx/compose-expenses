@@ -22,6 +22,7 @@ import javax.inject.Inject
 
 data class UIState(
     val addDialogVisible: Boolean = false,
+    val noPaymentDialog: Boolean = false,
     val paymentConfirmDialogVisible: Boolean = false,
     val actualExpesnesDialogVisible: Boolean = false,
     val statisticsLoaded: Boolean = false,
@@ -44,6 +45,7 @@ class ExpensesViewModel @Inject constructor(
         object CloseAddDialog : UIEvent()
         object CloseConfirmPaymentDialog : UIEvent()
         object CloseActualExpensesDialog : UIEvent()
+        object CloseNoPaymentDialog : UIEvent()
         object StatisticsLoaded : UIEvent()
 
         class OpenActualExpensesDialog(val expensesType: Expense.Type) : UIEvent()
@@ -57,10 +59,19 @@ class ExpensesViewModel @Inject constructor(
 
     fun onEvent(event: UIEvent) {
         when (event) {
-            is UIEvent.AddButtonClick ->
-                _state.value = state.value.copy(
-                    addDialogVisible = true
-                )
+            is UIEvent.AddButtonClick -> {
+                checkPayment { hasPayment ->
+                    if (hasPayment) {
+                        _state.value = state.value.copy(
+                            addDialogVisible = true
+                        )
+                    } else {
+                        _state.value = state.value.copy(
+                            noPaymentDialog = true
+                        )
+                    }
+                }
+            }
             is UIEvent.MakePaymentButtonClick ->
                 _state.value = state.value.copy(
                     paymentConfirmDialogVisible = true
@@ -86,6 +97,10 @@ class ExpensesViewModel @Inject constructor(
             is UIEvent.CloseActualExpensesDialog ->
                 _state.value = state.value.copy(
                     actualExpesnesDialogVisible = false
+                )
+            is UIEvent.CloseNoPaymentDialog ->
+                _state.value = state.value.copy(
+                    noPaymentDialog = false
                 )
             is UIEvent.CloseConfirmPaymentDialogAndSave -> {
                 makePayment(event.amount.toDouble())
@@ -177,6 +192,17 @@ class ExpensesViewModel @Inject constructor(
                 it.map { dto -> dto.toDomain() }
             }
         }
+
+    private fun checkPayment(result: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val count = paymentDao.countPayments()
+                withContext(Dispatchers.Main) {
+                    result(count > 0)
+                }
+            }
+        }
+    }
 
     private fun add(expense: Expense) {
         viewModelScope.launch {
