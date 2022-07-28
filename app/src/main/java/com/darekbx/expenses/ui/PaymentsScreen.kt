@@ -34,6 +34,8 @@ fun PaymentsScreen(
     val payments by expensesViewModel.loadAllPayments().observeAsState(initial = emptyList())
     LazyColumn(Modifier.padding(8.dp)) {
         items(payments, { payment: Payment -> payment.uid!! }) { payment ->
+            val spent = payment.summaryExpenses()
+            val spentTooMuch = spent > payment.amount
             Card(
                 modifier = Modifier.padding(8.dp),
                 elevation = 4.dp
@@ -49,8 +51,9 @@ fun PaymentsScreen(
                         PaymentText(payment.amount)
                         Text(
                             modifier = Modifier.padding(start = 8.dp),
-                            text = "Spent: %.2fzł".format(payment.summaryExpenses()),
-                            style = MaterialTheme.typography.subtitle1
+                            text = "Spent: %.2fzł".format(spent),
+                            style = MaterialTheme.typography.subtitle1,
+                            color = if (spentTooMuch) Color.Red else Color.Black
                         )
                     }
                     Column {
